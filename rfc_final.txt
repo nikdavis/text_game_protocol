@@ -1,0 +1,336 @@
+
+
+
+
+PSU CS494                                                  N. Davis, Ed.
+Internet-Draft                          CS494, Portland State University
+Intended status: Informational                                  May 2014
+Expires: November 2, 2014
+
+
+   Draft for simple, extendable data-sparse single, multiplayer game
+                                protocol
+                  draft-psu-cs494-gameprotocol-ndavis
+
+Abstract
+
+   The purpose of this RFC is to define a protocol that lends ease to
+   creating online, data-sparse games.  With the rise of Web 2.0
+   applications, many games are created online and implemented mostly on
+   the client side with languages like JavaScript.  This RFC hopes to
+   define a simple, extendable basis for serving multiple low-data,
+   single player games that have inherent features like game view
+   sharing and the ability to poll the server for statistics about games
+   in progress.
+
+   Since the most of the logic is handled on the client, the server
+   needs only act as the glue for sharing game views, and as a second
+   layer of game logic verification (after the client's first layer of
+   verification).  In the future this RFC can be extended for
+   multiplayer in one game and more data-dense use cases.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on November 2, 2014.
+
+
+
+
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 1]
+
+Internet-Draft        Simple game network protocol              May 2014
+
+
+Copyright Notice
+
+   Copyright (c) 2014 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Technical Basis . . . . . . . . . . . . . . . . . . . . . . .   2
+   3.  Supported Modes . . . . . . . . . . . . . . . . . . . . . . .   3
+   4.  The Server's Role . . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Modes of Operation  . . . . . . . . . . . . . . . . . . . . .   4
+     5.1.  Single Player Mode  . . . . . . . . . . . . . . . . . . .   4
+     5.2.  Game Viewing Mode . . . . . . . . . . . . . . . . . . . .   5
+     5.3.  Game Statistic Mode . . . . . . . . . . . . . . . . . . .   5
+   6.  Future Direction  . . . . . . . . . . . . . . . . . . . . . .   5
+   7.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   5
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
+   9.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+   10. Informative References  . . . . . . . . . . . . . . . . . . .   6
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
+
+1.  Introduction
+
+   This RFC was written with the intent to create a very simple network
+   game protocol.  Its goals are to support single and multiplayer
+   dynamics for very data-sparse games that are currently prevalent on
+   the web.  Wherever possible decisions are made with an emphasis on
+   simplicity and inclusiveness; in other words, this protocol is
+   designed in the hopes that it provides a basic framework that can be
+   utilized by many games, and even extended to fit new criteria as it
+   is seen as desirable.
+
+2.  Technical Basis
+
+   This network protocol is intended to be designed as an application
+   protocol.  As such it is designed as a layer on top of TCP and UDP
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 2]
+
+Internet-Draft        Simple game network protocol              May 2014
+
+
+   protocols.  The benefits and deficits of the TCP and UDP protocols
+   are taken for granted in this RFC.
+
+   This application level protocol defines a single server listening on
+   a TCP port of 20013.  It also listens over UDP on port 20014.  These
+   sockets are for game play and game statistics respectively.  In terms
+   of clients, this protocol can support as many clients as wieldy
+   within TCP and the cost of this protocol.  This protocol is game-
+   agnostic, so no technical details are listed within this protocol in
+   terms of specific features of any game.
+
+   Where possible, data is passed around as JSON dictionary format.
+   This allows very simple interoperability between various languages
+   and programming environments.  Only minimal, core transaction
+   variables need to actually be parsed out of TCP or UDP packets.  This
+   allows reuse of the now commonplace JSON extensions currently found
+   in nearly every programming language.
+
+   Core variables, called raw flags, will be passed directly in the TCP
+   packet similar to data in HTTP.  They are used to pass core data,
+   such as initial client decision whether to be a game player or
+   viewer.  They follow the format "Name: data\r\n".  Data sent between
+   the client and server is encapsulated in packets, delimited by
+   <start> and <end> markers.  The JSON data section is always
+   represented by a raw flag named Data.  The JSON data is all the data
+   after the raw flag name, colon, and subsequent space, all the way to
+   just prior to the return carriage and newline representing the end of
+   the Data raw flag.
+
+3.  Supported Modes
+
+   This section describes the supported modes of game interaction.
+
+   Initially, this RFC supports three modes of gameplay:
+
+   o  Single player connection over TCP
+
+   o  Game viewing mode over TCP
+
+   o  Game statistic mode over UDP
+
+   These modes will be delved into and explained in the following
+   sections, which represent the bulk of this RFC.
+
+
+
+
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 3]
+
+Internet-Draft        Simple game network protocol              May 2014
+
+
+4.  The Server's Role
+
+   The server's role in this protocol is simplified as greatly as
+   possible.  With the rise of client-side languages that can quickly
+   process large code segments, server-side code is becoming less and
+   less necessary.  This protocol was designed with this in mind.  The
+   protocol's purpose is to provide the bare architecture for
+   structuring client-server games with the focus of client-side logic
+   execution in mind.
+
+5.  Modes of Operation
+
+5.1.  Single Player Mode
+
+   In order to initiate a game the client needs to initiate TCP socket
+   to the server's address at port 20013.  Upon initial connection, the
+   client must tell the server whether it seeks to be a player or
+   viewer.  This is done in a packet with a single raw flag titled
+   ClientType, with a datum of either Player, or Viewer.  In order to
+   play a game the client needs to send a type of Player.  Depending on
+   this flag, the server will then return a packet with the same raw
+   flag as a confirmation, as well as raw flags titled ErrorID, and
+   GameID.  ErrorIDs are signed integers, specific to and generally
+   determined by the game itself.  ErrorID follows Linux error levels, 0
+   if OK, and nonzero otherwise.  However, the values [-128, 0] are
+   reserved by the protocol for core protocol error functionality.  The
+   GameID is an unsigned integer and is free to be determined by the
+   server in any way.  This initialization is then followed by a Data
+   section that will give the client full initialization data in JSON
+   format for the game to be played.  This game data is sent in the same
+   protocol initialization packet.  The maximum packet length supported
+   is currently 5000 characters, including all raw flags and support
+   characters.
+
+   The JSON data sent to the client is to be determined on a per game
+   basis.  The game then proceeds by the client updating the JSON
+   dictionaries that represent the game state.  These are the same
+   variables given to the client initially.  Whenever data is modified,
+   the top-level dictionary name that holds the changes is sent to the
+   server.  Only the tree branches that have changed in the JSON
+   dictionary hierarchy are required to be sent.  The server must be
+   intelligent enough to recognize which branches are present and modify
+   only those branches.  On every client update the server is given a
+   chance to nullify any change the client requests through packet
+   containing only an Error and ErrorID response.  This serves as a
+   backup to verify game logic is executed properly.
+
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 4]
+
+Internet-Draft        Simple game network protocol              May 2014
+
+
+5.2.  Game Viewing Mode
+
+   This mode has the same initialization as Player mode, with the
+   exception that the client send a ClientType of Viewer.  From there
+   the client is sent the full game state from the server, analogous to
+   the Player mode.  However, from then on the client is not allowed to
+   send any changes.  If they attempt to they will receive an Error of
+   an ErrorID yet to be determined.
+
+   As changes are made to the game state by the Player client, the role
+   of the server is to simply forward these changes directly to the
+   Viewer clients.  Currently, the server must send all Player client
+   requests (only the JSON data) to the Viewer clients regardless of
+   whether there is an Error.  However, the server must evaluate these
+   requests and forward valid Error and ErrorID raw flags along with
+   this data.  In the future if no need is realized for this erroneous
+   data the next RFC may change this behavior to have the server censor
+   erroneous Player client data.
+
+5.3.  Game Statistic Mode
+
+   In this mode the client can reach the server at port 20014 over UDP.
+   The packet structure is simple: one data delimited packet with a raw
+   flag named ClientType with the value Stats.  The server will respond
+   with a delimited packet with data in JSON format.  This format is
+   determined by the game specifics, however this is the only JSON data
+   that is partially specified by this protocol.  The data must contain
+   a top-level dictionary titled Games, that points to an array of all
+   GameIDs in progress.  Any additional statistics are up to the defined
+   game and are returned additionally in the JSON blurb.
+
+6.  Future Direction
+
+   In the future this RFC will define multiplayer in single game
+   functionality.  It has not yet been decided if this will be a client-
+   server-client or client-client topology.  Also, further work will be
+   put into defining basic errors and more such boilerplate additions.
+
+7.  Acknowledgements
+
+   This RFC is based on an XML template that was derived from an initial
+   version written by Pekka Savola and contributed by him to the xml2rfc
+   project.
+
+   This work was required by and is dependent upon the teachings of Niru
+   Busulu and her class, CS494, at Portland State University
+
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 5]
+
+Internet-Draft        Simple game network protocol              May 2014
+
+
+8.  IANA Considerations
+
+   This memo includes no request to IANA, as this RFC is not yet fully
+   formalized.
+
+9.  Security Considerations
+
+   Currently, security is not a large factor is this game protocol.
+   Everything is passed along is plain text and is easily intercepted,
+   viewed, or modified my anyone in the middle of the transmission
+   route.
+
+   One special consideration involves the use of JSON as an intermediary
+   format.  Clients and servers are directly interpreting this JSON
+   format data.  This has the potential that clients (or even servers,
+   although this is less a worry) could purposefully malform data which
+   the server will then directly interpret and use to base its future
+   execution.  This implies that the server must validate at least the
+   structure of the data to ensure it follows the specified format on a
+   per-game basis.
+
+10.  Informative References
+
+   [RFC2434]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
+              IANA Considerations Section in RFCs", BCP 26, RFC 2434,
+              October 1998.
+
+   [RFC2629]  Rose, M., "Writing I-Ds and RFCs using XML", RFC 2629,
+              June 1999.
+
+   [xml2rfc]  resource.org, "xml2rfc (version v2)", 2014,
+              <http://xml.resource.org/>.
+
+Author's Address
+
+   Nikolas Davis (editor)
+   CS494, Portland State University
+   Portland, OR  97229
+   USA
+
+   Phone: +1 503 475 2349
+   Email: nikdavis@pdx.edu
+
+
+
+
+
+
+
+
+
+Davis                   Expires November 2, 2014                [Page 6]
