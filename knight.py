@@ -10,6 +10,9 @@ chessBoard = [	[0,0,0,0,0,0,0,0],	\
 				[0,0,0,0,0,0,0,0],	\
 				[0,0,0,0,0,0,0,0] ]
 
+cursorLetter = "/"
+placeLetter = "O"
+
 def drawBoard(board):
 	out = []
 	s = ""
@@ -72,7 +75,7 @@ for row in drawBoard(chessBoard):
 	myscr.addstr( by + i,  bx, row )
 	i += 1
 [y, x] = knightPos(bx, by, kx, ky)
-myscr.addstr( y, x, "k" )
+myscr.addstr( y, x, cursorLetter )
 myscr.refresh()
 
 while 1:
@@ -103,9 +106,9 @@ while 1:
 		myscr.addstr( by + i,  bx, row )
 		i += 1
 	[y, x] = knightPos(bx, by, kx_last, ky_last)
-	myscr.addstr( y, x, "O" )
+	myscr.addstr( y, x, placeLetter)
 	[y, x] = knightPos(bx, by, kx, ky)
-	myscr.addstr( y, x, "k" )
+	myscr.addstr( y, x, cursorLetter )
 
 curses.nocbreak()
 curses.curs_set(1)

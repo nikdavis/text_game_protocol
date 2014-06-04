@@ -23,6 +23,23 @@ chessBoard = [	[0,0,0,0,0,0,0,0],	\
 emptyGameData = json.dumps(chessBoard)
 
 
+def statsServer():
+	r = redis.Redis("localhost")
+	CLIENT_KEY = "Clients"
+	UDP_IP = "127.0.0.1"
+	UDP_PORT = 20014
+	
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.bind((UDP_IP, UDP_PORT))
+	#s.listen(1)
+	
+	while True:
+		data, addr = s.recvfrom(1024)
+		if data == "<start>\r\nStats: Please\r\n<end>\r\n":
+			cls =  json.dumps( list( r.smembers(CLIENT_KEY) ) )
+			s.sendto(cls, addr)
+		print "Stats response sent to %s:%s" % addr
+
 def handleClient(c, addr):
 	g = gb.GameProtocolServer(c)
 	# grab packet generator
@@ -65,6 +82,9 @@ def handleClient(c, addr):
 	c.close()
 
 
+# Start stats server
+
+Process(target=statsServer).start()
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((TCP_IP, TCP_PORT))
 s.listen(1)
