@@ -9,9 +9,9 @@ class GameProtocolServer:
 	p = {}
 	DEL = "\r\n"
 	TCP_BUFFER_SIZE = 20
+	DBG = 1
 	
 	def __init__(self, c):
-		#print "protocol started, listening on: %d" % s.getsockname()[1]
 		self.r = redis.Redis('localhost')
 		self.c = c
 		IDCounter = self.r.get("IDCounter")
@@ -24,9 +24,9 @@ class GameProtocolServer:
 		cl = {}
 		cType = p['ClientType']
 		if cType in ('Player', 'Viewer'):
-			print "Incrementing ID Counter"
 			self.r.incr("IDCounter")
 			clientID = self.r.get("IDCounter")
+			if self.DBG: print "serv: incrementing client ID, %s" % clientID
 		else:
 			return
 		if cType == 'Player':
@@ -42,11 +42,16 @@ class GameProtocolServer:
 			else:
 				return None
 		typeKey = ":".join( [cl['ID'], "Type"] )
-		print "%s: %s" % (typeKey, cl['Type'])
+		if self.DBG: print "serv: setting %s, %s" % (typeKey, cl['Type'])
 		self.r.set(typeKey, cl['Type'])
 		self.r.sadd("Clients", cl['ID'])
 		return cl
-	
+
+	def removeClient(self, cl):
+		clKey = ":".join( [cl['ID'], "Type"] )
+		if self.DBG: print "serv: removing %s" % clKey
+		self.r.delete(clKey)
+
 	# called by viewer
 	def addViewer(self, cl):
 		gameID = cl['Viewing']
@@ -82,12 +87,10 @@ class GameProtocolServer:
 		
 	def waitForPacket(self):
 		s = self.c
-		#print s
 		while(1):
 			p = {}
 			packet = ""
 			data = s.recv(self.TCP_BUFFER_SIZE)
-			#print data
 			# if connection is over, quit
 			if not data:
 				break
@@ -133,18 +136,18 @@ class GameProtocolClient:
 	p = {}
 	DEL = "\r\n"
 	TCP_BUFFER_SIZE = 20
+	DBG = 1
 	
 	def __init__(self, c):
-		#print "protocol started, listening on: %d" % s.getsockname()[1]
 		self.c = c
 
 	def startGame(self):
-		print "Starting game"
+		if self.DBG: print "Starting game"
 		p = {'ClientType': 'Player'}
 		self.sendResponse(p)
 
 	def viewGame(self, gameID):
-		print "Starting viewer game"
+		if self.DBG: print "Starting viewer game"
 		p = {'ClientType': 'Viewer', 'GameID': str(gameID)}
 		self.sendResponse(p)
 
@@ -164,19 +167,16 @@ class GameProtocolClient:
 	# timeout in ms
 	def waitForPacket(self):
 		s = self.c
-		#print s
 		while(1):
 			p = {}
 			packet = ""
 			data = s.recv(self.TCP_BUFFER_SIZE)
-			#print data
 			# if connection is over, quit
 			if not data:
 				break
 			# look for <start> tag
 			elif(data[0:7] == "<start>"):
 				packet += data[9:]
-				#print packet
 				while 1:
 					m = re.search("(<end>)", packet)
 					if m:
@@ -189,7 +189,6 @@ class GameProtocolClient:
 					# is packet too large with no <end> in sight?
 					if len(packet) > 5000:
 						break
-					#print packet
 				# create the dictionary
 				for x in packet:
 					a = ""

@@ -6,25 +6,46 @@ import json
 import sys
 import curses
 
+
+# Some basic client protocol defs
 TCP_IP = '127.0.0.1'
-TCP_PORT = 5010
-BUFFER_SIZE = 1024  # Normally 1024, but we want fast response
-MESSAGE = "Hello, World!"
+TCP_PORT = 20013
+BUFFER_SIZE = 1024
 
 
+def processArgs(argv):
+	# Grab game ID from arguments list
+	ret = None
+	argc = len(argv)
+	if argc == 2:
+		try:
+			ret = int(argv[1])
+		except ValueError:
+			print "Game ID must be an integer"
+	else:
+		print "Must pass integer game ID as argument"
+	return ret
+
+gameID = processArgs(sys.argv)
+if not gameID:
+	sys.exit(2)
+
+
+""" Old version
 def startPlayer(ip, port):
 	c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	c.connect( (ip, port) )
 	print "Started client process"
 	g = gb.GameProtocolClient(c)
 	packets = g.waitForPacket()
-	g.viewGame("47")
+	g.viewGame(gameID)
 	p = packets.next()
 	if p['ErrorID'] == "0":
 		for p in packets:
 			chessBoard = json.loads( p['Data'] )
 			print chessBoard
 	c.close()
+"""
 
 def drawBoard(board):
 	out = []
@@ -66,9 +87,8 @@ def validMove(kx, ky, kx_last, ky_last):
 			return False
 
 
-TCP_IP = '127.0.0.1'
-TCP_PORT = 5010
-BUFFER_SIZE = 1024
+
+# Curses app starts here
 
 myscr = curses.initscr()
 
@@ -92,8 +112,9 @@ c.connect( (TCP_IP, TCP_PORT) )
 print "Started client process"
 g = gb.GameProtocolClient(c)
 packets = g.waitForPacket()
-g.viewGame("60")
+g.viewGame(gameID)
 p = packets.next()
+print p
 if p['ErrorID'] != "0":
 	sys.exit(1)
 

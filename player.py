@@ -5,6 +5,13 @@ import gameprotocol as gb
 import json
 import curses
 
+# Client protocol definitions
+TCP_IP = '127.0.0.1'
+TCP_PORT = 20013
+BUFFER_SIZE = 1024
+
+# Some basic Knight definitions
+
 def drawBoard(board):
 	out = []
 	s = ""
@@ -44,10 +51,9 @@ def validMove(kx, ky, kx_last, ky_last):
 		else:
 			return False
 
-
-TCP_IP = '127.0.0.1'
-TCP_PORT = 5010
-BUFFER_SIZE = 1024
+#
+# Start curses application
+#
 
 myscr = curses.initscr()
 
